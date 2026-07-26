@@ -1,26 +1,69 @@
-🧩 Dependencies for YT A/V Downloader and Chopper
+# yt-wav-cutter
 
-This application requires a few Python modules and external tools to function properly.
-🐍 Python Modules
+Simple Windows-friendly GUI to:
 
-Install with pip:
+- download YouTube **audio → WAV**
+- download YouTube **video → MP4**
+- optionally **cut a time range** (start / end)
 
-pip install yt-dlp
+Win95-ish gray UI on purpose.
 
-    ✅ tkinter and ttk are included with most standard Python installations. If missing, install the python3-tk package (Linux) or ensure “tcl/tk and IDLE” is enabled during Windows/macOS Python installation.
+## Quick start (Windows)
 
-🛠 System Tools
-Tool	Purpose	Install Instructions
-ffmpeg	Used to cut and convert media files	Download or choco install ffmpeg (Windows only)
+```powershell
+cd yt-wav-cutter
+py -3 -m pip install -U -r requirements.txt
+py -3 yt-wav-cutter.py
+```
 
-    ⚠️ ffmpeg must either be in your system’s PATH or placed in the same folder as the .exe.
+Or:
 
-🛠 For Packaging as .exe
+```powershell
+python -m pip install -U -r requirements.txt
+python yt-wav-cutter.py
+```
 
-If you plan to build a standalone .exe for distribution:
+## Requirements
 
-pip install pyinstaller
+| Dependency | Why |
+|---|---|
+| **Python 3.10+** with **tkinter** | GUI |
+| **yt-dlp** (`requirements.txt`) | YouTube download |
+| **ffmpeg** on `PATH` | WAV extract + cutting |
+| **Node.js** (recommended) | YouTube JS runtime for yt-dlp |
 
-Then run:
+Without Node (or Deno), yt-dlp still often works today but prints a deprecation warning and may miss formats later. See [yt-dlp EJS wiki](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
 
-pyinstaller --onefile --windowed yt_wav_cutter.
+More detail: [`DEPENDENCIES.md`](DEPENDENCIES.md)
+
+## Usage
+
+1. Paste a YouTube URL  
+2. Set start / end times (`HH:MM:SS`) if cutting  
+3. Pick a button:
+   - **Download and Cut Audio**
+   - **Download and Cut Video**
+   - **Download Audio Full**
+   - **Download Video Full**
+4. Choose where to save
+
+The status line and progress bar show what’s happening. Errors show in the status line (details also print in the console if you launched from a terminal).
+
+## Keep it working
+
+YouTube breaks extractors often. When downloads fail:
+
+```powershell
+py -3 -m pip install -U yt-dlp
+```
+
+Re-run the app after upgrading.
+
+## Packaging as .exe (optional)
+
+```powershell
+py -3 -m pip install pyinstaller
+pyinstaller --onefile --windowed yt-wav-cutter.py
+```
+
+The built exe still needs **ffmpeg** (and ideally **Node**) available on the machine `PATH`.

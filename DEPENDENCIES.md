@@ -1,16 +1,44 @@
-🧩 Dependencies for YT Media Downloader
+# Dependencies — YT Media Downloader
 
-This application requires a few Python modules and external tools to function properly.
-🐍 Python Modules
+## Python packages
 
-Install with pip:
+```powershell
+py -3 -m pip install -U -r requirements.txt
+```
 
-pip install yt-dlp
+That installs / upgrades **yt-dlp**.
 
-    ✅ tkinter and ttk are included with most standard Python installations. If missing, install the python3-tk package (Linux) or ensure “tcl/tk and IDLE” is enabled during Windows/macOS Python installation.
+`tkinter` ships with the official Windows Python installer if you left **tcl/tk and IDLE** checked.
 
-🛠 System Tools
-Tool	Purpose	Install Instructions
-ffmpeg	Used to cut and convert media files	Download or choco install ffmpeg (Windows only)
+## System tools
 
-    ⚠️ ffmpeg must either be in your system’s PATH or placed in the same folder as the .exe.
+| Tool | Purpose | Install |
+|---|---|---|
+| **ffmpeg** | Convert to WAV, cut audio/video | `choco install ffmpeg` or [gyan.dev builds](https://www.gyan.dev/ffmpeg/builds/) — must be on `PATH` |
+| **Node.js LTS** | JS runtime for YouTube extraction (yt-dlp) | [nodejs.org](https://nodejs.org/) — must be on `PATH` as `node` |
+| **Deno** (optional alt) | Alternate JS runtime | [deno.land](https://deno.land/) |
+
+### Why Node / Deno?
+
+Newer **yt-dlp** versions warn:
+
+> YouTube extraction without a JS runtime has been deprecated
+
+The app auto-detects `node` or `deno` and passes them to yt-dlp. Prefer Node if you already have it.
+
+Details: https://github.com/yt-dlp/yt-dlp/wiki/EJS
+
+## Sanity checks
+
+```powershell
+py -3 -c "import tkinter, yt_dlp; print(yt_dlp.version.__version__)"
+ffmpeg -version
+node -v
+```
+
+## Packaging
+
+```powershell
+py -3 -m pip install pyinstaller
+pyinstaller --onefile --windowed yt-wav-cutter.py
+```

@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+dist/
+build/
+*.spec
+_tmp_*
+_smoke_test/
+downloaded_audio*
+downloaded_video*
+*.wav
+*.mp4
+!.gitkeep
