@@ -8,7 +8,19 @@ Repo: https://github.com/boyaloxer/yt-wav-cutter
 
 ---
 
-## Quick start (Windows)
+## Download for Windows (no Python)
+
+**[YT Media Downloader v2.0.0 — portable zip](https://github.com/boyaloxer/yt-wav-cutter/releases/download/v2.0.0/YT-Media-Downloader-portable.zip)**
+
+1. Download and unzip  
+2. Run `YT Media Downloader.exe`  
+3. (Recommended) Install [Node.js LTS](https://nodejs.org/) for more reliable YouTube downloads  
+
+ffmpeg is bundled. Full notes: [Release v2.0.0](https://github.com/boyaloxer/yt-wav-cutter/releases/tag/v2.0.0)
+
+---
+
+## Quick start (Windows, from source)
 
 ### 1. Install system tools (once)
 
