@@ -43,13 +43,13 @@
             <button type="button" class="seg-btn active" data-mode="audio">♪ audio → wav</button>
             <button type="button" class="seg-btn" data-mode="video">video → mp4</button>
           </div>
-          <button type="button" class="cut-switch" id="cut-switch" aria-pressed="true">
+          <button type="button" class="cut-switch" id="cut-switch" aria-pressed="false">
             <span class="track"><span class="knob"></span></span>
             <span class="cut-label">cut a segment</span>
           </button>
         </div>
 
-        <div class="cut-panel" id="cut-panel">
+        <div class="cut-panel hidden" id="cut-panel">
           <div class="time-col">
             <label class="label tiny">START</label>
             <input id="start" class="time" value="00:00:00" spellcheck="false">
@@ -69,8 +69,11 @@
             <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
           </div>
           <div class="status-row">
-            <span id="status-left">READY 2 RIP</span>
-            <span id="status-right">IDLE</span>
+            <span id="status-left" class="status-msg" title="">READY 2 RIP</span>
+            <span class="status-actions">
+              <button type="button" id="btn-copy-err" class="btn-copy-err hidden" title="Copy error to clipboard">copy err</button>
+              <span id="status-right">IDLE</span>
+            </span>
           </div>
         </div>
 

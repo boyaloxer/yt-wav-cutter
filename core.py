@@ -96,22 +96,45 @@ def make_progress_hook(on_progress: ProgressCb | None):
     return hook
 
 
-def base_ydl_opts(on_progress: ProgressCb | None = None) -> dict:
-    opts = {
+def base_ydl_opts(
+    on_progress: ProgressCb | None = None,
+    *,
+    player_clients: list[str] | None = None,
+) -> dict:
+    # YouTube often 403s certain android_* clients; prefer default minus known-bad ones.
+    clients = player_clients or ["default", "-android_sdkless"]
+    opts: dict = {
         "noplaylist": True,
         "quiet": True,
         "no_warnings": False,
         "progress_hooks": [make_progress_hook(on_progress)],
         "nocheckcertificate": False,
+        "retries": 10,
+        "fragment_retries": 10,
+        "http_headers": {
+            "Referer": "https://www.youtube.com/",
+            "Origin": "https://www.youtube.com",
+        },
+        "extractor_args": {
+            "youtube": {
+                "player_client": clients,
+            }
+        },
     }
     js = detect_js_runtimes()
     if js:
         opts["js_runtimes"] = js
+    # Let yt-dlp fetch EJS components when needed (helps challenge solving)
+    opts["remote_components"] = ["ejs:github"]
     return opts
 
 
-def audio_ydl_opts(outtmpl: str, on_progress: ProgressCb | None = None) -> dict:
-    opts = base_ydl_opts(on_progress)
+def audio_ydl_opts(
+    outtmpl: str,
+    on_progress: ProgressCb | None = None,
+    **base_kwargs,
+) -> dict:
+    opts = base_ydl_opts(on_progress, **base_kwargs)
     opts.update(
         {
             "format": "bestaudio/best",
@@ -127,16 +150,26 @@ def audio_ydl_opts(outtmpl: str, on_progress: ProgressCb | None = None) -> dict:
     return opts
 
 
-def video_ydl_opts(outtmpl: str, on_progress: ProgressCb | None = None) -> dict:
-    opts = base_ydl_opts(on_progress)
+def video_ydl_opts(
+    outtmpl: str,
+    on_progress: ProgressCb | None = None,
+    **base_kwargs,
+) -> dict:
+    opts = base_ydl_opts(on_progress, **base_kwargs)
     opts.update(
         {
-            "format": "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b",
+            # Don't force mp4-only streams — those often 403; merge whatever we get to mp4 when possible
+            "format": "bv*+ba/b",
             "merge_output_format": "mp4",
             "outtmpl": outtmpl,
         }
     )
     return opts
+
+
+def _is_403(exc: BaseException) -> bool:
+    text = str(exc)
+    return "403" in text or "Forbidden" in text
 
 
 def run_ffmpeg_cut(input_file: str, start: str, end: str, output_file: str) -> None:
@@ -293,31 +326,62 @@ def run_job(
     else:
         tmp_prefix += "_full"
 
+    # Retry ladder for YouTube 403 / client blocks
+    client_attempts: list[list[str] | None] = [
+        None,  # default opts (default, -android_sdkless)
+        ["tv", "tv_embedded", "web_safari"],
+        ["mweb", "web_safari"],
+        ["default", "-android_sdkless", "-android_vr"],
+    ]
+
+    last_exc: BaseException | None = None
     try:
         if on_progress:
             on_progress(0.0, None)
 
-        if is_audio:
-            status("DOWNLOADING AUDIO…")
-            with YoutubeDL(audio_ydl_opts(tmp_prefix, on_progress)) as ydl:
-                ydl.download([url])
-            media = find_downloaded_file(tmp_prefix, (".wav",))
-        else:
-            status("DOWNLOADING VIDEO…")
-            with YoutubeDL(video_ydl_opts(tmp_prefix, on_progress)) as ydl:
-                ydl.download([url])
-            media = find_downloaded_file(tmp_prefix, (".mp4", ".mkv", ".webm", ".mov"))
+        media = None
+        for i, clients in enumerate(client_attempts):
+            kwargs = {} if clients is None else {"player_clients": clients}
+            try:
+                if is_audio:
+                    status("DOWNLOADING AUDIO…" if i == 0 else f"RETRY AUDIO (client set {i + 1})…")
+                    with YoutubeDL(audio_ydl_opts(tmp_prefix, on_progress, **kwargs)) as ydl:
+                        ydl.download([url])
+                    media = find_downloaded_file(tmp_prefix, (".wav",))
+                else:
+                    status("DOWNLOADING VIDEO…" if i == 0 else f"RETRY VIDEO (client set {i + 1})…")
+                    with YoutubeDL(video_ydl_opts(tmp_prefix, on_progress, **kwargs)) as ydl:
+                        ydl.download([url])
+                    media = find_downloaded_file(tmp_prefix, (".mp4", ".mkv", ".webm", ".mov"))
+                break
+            except Exception as exc:
+                last_exc = exc
+                cleanup_prefix(tmp_prefix)
+                if _is_403(exc) and i < len(client_attempts) - 1:
+                    status(f"403 from YouTube — trying another client…")
+                    continue
+                raise
+
+        if not media:
+            raise last_exc or RuntimeError("Download failed with no output file.")
 
         if cut_on:
             status("CUTTING…")
             run_ffmpeg_cut(media, start, end, output_path)
         else:
+            # Normalize extension for video if merger made mkv/webm
+            if not is_audio:
+                real_ext = os.path.splitext(media)[1].lower() or ".mp4"
+                want_ext = os.path.splitext(output_path)[1].lower()
+                if want_ext == ".mp4" and real_ext != ".mp4":
+                    # keep user's folder/name but correct extension if we didn't get mp4
+                    output_path = os.path.splitext(output_path)[0] + real_ext
             if os.path.abspath(media) != os.path.abspath(output_path):
                 if os.path.isfile(output_path):
                     os.remove(output_path)
                 shutil.move(media, output_path)
 
-        kind = "WAV" if is_audio else "MP4"
+        kind = "WAV" if is_audio else os.path.splitext(output_path)[1].lstrip(".").upper() or "MP4"
         msg = f"SAVED. ENJOY UR {kind}"
         status(msg)
         if on_progress:
@@ -325,7 +389,18 @@ def run_job(
         return {"ok": True, "message": msg, "path": output_path}
     except Exception as exc:
         traceback.print_exc()
-        msg = f"Error: {exc}"
+        detail = str(exc).strip()
+        if detail.lower().startswith("error:"):
+            detail = detail[6:].strip()
+        if _is_403(exc):
+            msg = (
+                "YouTube blocked the download (HTTP 403). "
+                "Update yt-dlp (`pip install -U yt-dlp`), keep Node installed, "
+                "or try again later. "
+                f"Detail: {detail}"
+            )
+        else:
+            msg = f"Error: {detail}"
         status(msg)
         return {"ok": False, "message": msg}
     finally:

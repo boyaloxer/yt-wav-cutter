@@ -3,8 +3,9 @@
 
   const state = {
     mode: "audio",
-    cutOn: true,
+    cutOn: false,
     downloading: false,
+    lastError: "",
   };
 
   function parseHms(t) {
@@ -21,10 +22,27 @@
       secs != null && secs >= 0 ? `= ${secs} SEC` : "= ??";
   }
 
-  function setStatus(left, right, isError) {
-    $("status-left").textContent = left;
+  function showCopyErr(show) {
+    $("btn-copy-err").classList.toggle("hidden", !show);
+    if (!show) {
+      $("btn-copy-err").classList.remove("copied");
+      $("btn-copy-err").textContent = "copy err";
+    }
+  }
+
+  function setStatus(left, right, isError, fullError) {
+    const el = $("status-left");
+    el.textContent = left;
+    el.title = isError ? fullError || left : "";
+    el.classList.toggle("error", !!isError);
     $("status-right").textContent = right || "";
-    $("status-left").classList.toggle("error", !!isError);
+    if (isError) {
+      state.lastError = fullError || left || "";
+      showCopyErr(!!state.lastError);
+    } else {
+      state.lastError = "";
+      showCopyErr(false);
+    }
   }
 
   function setProgress(pct) {
@@ -50,22 +68,28 @@
     if (!payload) return;
     if (typeof payload.progress === "number") {
       setProgress(payload.progress);
-      const right =
-        payload.speed
-          ? `${Math.round(payload.progress)}% · ${payload.speed}`
-          : `${Math.round(payload.progress)}%`;
+      const right = payload.speed
+        ? `${Math.round(payload.progress)}% · ${payload.speed}`
+        : `${Math.round(payload.progress)}%`;
       if (state.downloading) {
         $("status-right").textContent = right;
       }
     }
     if (payload.status) {
-      setStatus(payload.status, $("status-right").textContent, !!payload.error);
+      const errText = payload.errorDetail || payload.status;
+      setStatus(
+        payload.status,
+        $("status-right").textContent,
+        !!payload.error,
+        payload.error ? errText : ""
+      );
     }
     if (payload.done) {
       state.downloading = false;
       $("btn-go").disabled = false;
       if (payload.error) {
-        setStatus(payload.status || "ERROR", "FAIL", true);
+        const errText = payload.errorDetail || payload.status || "ERROR";
+        setStatus(payload.status || "ERROR", "FAIL", true, errText);
       } else {
         setProgress(100);
         const kind = state.mode === "audio" ? "WAV" : "MP4";
@@ -80,6 +104,27 @@
       await new Promise((r) => setTimeout(r, 50));
     }
     throw new Error("Python bridge not ready");
+  }
+
+  async function copyText(text) {
+    if (!text) return false;
+    try {
+      const api = await apiReady();
+      if (api.copy_clipboard) {
+        const res = await api.copy_clipboard(text);
+        if (res === true) return true;
+        if (res && res.ok) return true;
+      }
+    } catch (e) {
+      console.error("copy via python failed", e);
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      console.error("navigator.clipboard failed", e);
+      return false;
+    }
   }
 
   async function loadDeps() {
@@ -109,6 +154,30 @@
     }
   }
 
+  $("btn-copy-err").addEventListener("click", async () => {
+    const ok = await copyText(state.lastError);
+    const btn = $("btn-copy-err");
+    if (ok) {
+      btn.textContent = "copied!";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        if (state.lastError) {
+          btn.textContent = "copy err";
+          btn.classList.remove("copied");
+        }
+      }, 1500);
+    } else {
+      btn.textContent = "copy fail";
+    }
+  });
+
+  // Double-click status message also copies when it's an error
+  $("status-left").addEventListener("dblclick", async () => {
+    if (!state.lastError) return;
+    const ok = await copyText(state.lastError);
+    if (ok) setStatus($("status-left").textContent, "COPIED", true, state.lastError);
+  });
+
   $("btn-paste").addEventListener("click", async () => {
     try {
       const api = await apiReady();
@@ -119,7 +188,7 @@
         const t = await navigator.clipboard.readText();
         if (t) $("url").value = t.trim();
       } catch (e) {
-        setStatus("COULD NOT READ CLIPBOARD", "IDLE", true);
+        setStatus("COULD NOT READ CLIPBOARD", "IDLE", true, String(e));
       }
     }
   });
@@ -136,14 +205,19 @@
     if (state.downloading) return;
     const url = $("url").value.trim();
     if (!url) {
-      setStatus("PASTE A URL FIRST", "IDLE", true);
+      setStatus("PASTE A URL FIRST", "IDLE", true, "Paste a YouTube URL first.");
       return;
     }
     if (state.cutOn) {
       const a = parseHms($("start").value);
       const b = parseHms($("end").value);
       if (a == null || b == null || b - a <= 0) {
-        setStatus("FIX START/END TIMES", "IDLE", true);
+        setStatus(
+          "FIX START/END TIMES",
+          "IDLE",
+          true,
+          "Start/end must be HH:MM:SS and end must be after start."
+        );
         return;
       }
     }
@@ -166,7 +240,6 @@
         start: $("start").value.trim() || "00:00:00",
         end: $("end").value.trim(),
       });
-      // If user cancelled save dialog, API returns cancelled
       if (result && result.cancelled) {
         state.downloading = false;
         $("btn-go").disabled = false;
@@ -176,11 +249,11 @@
     } catch (e) {
       state.downloading = false;
       $("btn-go").disabled = false;
-      setStatus(String(e), "FAIL", true);
+      setStatus(String(e), "FAIL", true, String(e));
     }
   });
 
-  setCutOn(true);
+  setCutOn(false);
   updateDuration();
   window.addEventListener("pywebviewready", loadDeps);
   loadDeps();

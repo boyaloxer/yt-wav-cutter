@@ -291,13 +291,44 @@ body {
 .status-row {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
   font-family: Silkscreen, monospace;
   font-size: 9px;
   color: #5b7d99;
   margin-top: 5px;
 }
-.status-row.error #status-left,
-.status-row .error { color: #a03a3a; }
+.status-msg {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  user-select: text;
+  cursor: text;
+}
+.status-msg.error { color: #a03a3a; }
+.status-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn-copy-err {
+  font-family: Silkscreen, monospace;
+  font-size: 9px;
+  color: #a03a3a;
+  background: linear-gradient(180deg, #f8e3e3, #f0cccc);
+  border: 1px solid #e0a0a0;
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.btn-copy-err:hover { filter: brightness(1.04); }
+.btn-copy-err.hidden { display: none; }
+.btn-copy-err.copied {
+  color: #2a6e3d;
+  background: linear-gradient(180deg, #eafbef, #cdeeda);
+  border-color: #9ed4b2;
+}
 
 .chips { display: flex; gap: 8px; flex-wrap: wrap; }
 .chip {

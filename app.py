@@ -5,8 +5,7 @@ YT Media Downloader — Aqua Gel UI (pywebview) + yt-dlp/ffmpeg backend.
 from __future__ import annotations
 
 import json
-import os
-import sys
+import subprocess
 import threading
 from pathlib import Path
 
@@ -23,6 +22,7 @@ class Api:
     def __init__(self) -> None:
         self._window: webview.Window | None = None
         self._busy = False
+        self._clip_root = None  # persistent tk root — destroy clears Windows clipboard
 
     def set_window(self, window: webview.Window) -> None:
         self._window = window
@@ -30,20 +30,56 @@ class Api:
     def get_deps(self) -> dict:
         return core.dependency_status()
 
+    def _clip_tk(self):
+        import tkinter as tk
+
+        if self._clip_root is None:
+            self._clip_root = tk.Tk()
+            self._clip_root.withdraw()
+        return self._clip_root
+
     def paste_clipboard(self) -> str:
         try:
-            import tkinter as tk
-
-            r = tk.Tk()
-            r.withdraw()
+            r = self._clip_tk()
             try:
-                text = r.clipboard_get()
-            except tk.TclError:
-                text = ""
-            r.destroy()
-            return text or ""
+                return r.clipboard_get() or ""
+            except Exception:
+                return ""
         except Exception:
             return ""
+
+    def copy_clipboard(self, text: str) -> dict:
+        """Copy text to the system clipboard (for error messages)."""
+        text = "" if text is None else str(text)
+        # 1) PowerShell Set-Clipboard (most reliable on modern Windows)
+        try:
+            completed = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    "Set-Clipboard -Value ([Console]::In.ReadToEnd())",
+                ],
+                input=text,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if completed.returncode == 0:
+                return {"ok": True, "via": "powershell"}
+        except Exception as exc:
+            print("powershell clipboard failed:", exc)
+
+        # 2) Persistent tkinter clipboard (do NOT destroy the root)
+        try:
+            r = self._clip_tk()
+            r.clipboard_clear()
+            r.clipboard_append(text)
+            r.update()
+            return {"ok": True, "via": "tkinter"}
+        except Exception as exc:
+            print("tk clipboard failed:", exc)
+            return {"ok": False, "error": str(exc)}
 
     def _push(self, payload: dict) -> None:
         if not self._window:
@@ -51,6 +87,27 @@ class Api:
         # Escape for JS string
         data = json.dumps(payload)
         self._window.evaluate_js(f"window.__ytUpdate && window.__ytUpdate({data})")
+
+    def _tk_save_dialog(self, default_name: str, ext: str) -> str | None:
+        try:
+            import tkinter as tk
+            from tkinter import filedialog
+
+            r = tk.Tk()
+            r.withdraw()
+            r.attributes("-topmost", True)
+            path = filedialog.asksaveasfilename(
+                parent=r,
+                defaultextension=f".{ext}",
+                filetypes=[(f"{ext.upper()} files", f"*.{ext}"), ("All files", "*.*")],
+                initialfile=default_name,
+                title="Save as",
+            )
+            r.destroy()
+            return path or None
+        except Exception as exc:
+            print("tk save dialog failed:", exc)
+            return None
 
     def start_download(self, params: dict) -> dict:
         if self._busy:
@@ -65,27 +122,37 @@ class Api:
         is_audio = mode != "video"
         ext = "wav" if is_audio else "mp4"
         default_name = f"clip.{ext}" if cut_on else f"download.{ext}"
+        # pywebview expects Sequence[str], e.g. "WAV Files (*.wav)" — not (label, pattern) tuples
         file_types = (
-            (f"{ext.upper()} Files (*.{ext})", f"*.{ext}"),
-            ("All files (*.*)", "*.*"),
+            f"{ext.upper()} Files (*.{ext})",
+            "All files (*.*)",
         )
 
         if not self._window:
             return {"ok": False, "message": "Window not ready."}
 
-        result = self._window.create_file_dialog(
-            webview.SAVE_DIALOG,
-            save_filename=default_name,
-            file_types=file_types,
-        )
+        try:
+            result = self._window.create_file_dialog(
+                webview.FileDialog.SAVE if hasattr(webview, "FileDialog") else webview.SAVE_DIALOG,
+                save_filename=default_name,
+                file_types=file_types,
+            )
+        except TypeError as exc:
+            # Older/newer pywebview quirks — fall back to tk save dialog
+            print(f"create_file_dialog failed ({exc}); using tkinter fallback")
+            result = self._tk_save_dialog(default_name, ext)
+
         if not result:
             return {"cancelled": True}
 
-        # create_file_dialog may return str or tuple
+        # create_file_dialog returns Sequence[str] | None
         if isinstance(result, (list, tuple)):
             output_path = result[0] if result else ""
         else:
-            output_path = str(result)
+            output_path = result
+        if isinstance(output_path, (list, tuple)):
+            output_path = output_path[0] if output_path else ""
+        output_path = str(output_path or "").strip()
         if not output_path:
             return {"cancelled": True}
 
@@ -97,7 +164,14 @@ class Api:
         def worker() -> None:
             try:
                 def on_status(msg: str) -> None:
-                    self._push({"status": msg, "error": msg.startswith("Error")})
+                    is_err = msg.startswith("Error")
+                    self._push(
+                        {
+                            "status": msg,
+                            "error": is_err,
+                            "errorDetail": msg if is_err else None,
+                        }
+                    )
 
                 def on_progress(pct: float, speed: str | None) -> None:
                     self._push({"progress": pct, "speed": speed})
@@ -112,11 +186,13 @@ class Api:
                     on_status=on_status,
                     on_progress=on_progress,
                 )
+                msg = outcome.get("message", "")
                 self._push(
                     {
                         "done": True,
                         "error": not outcome.get("ok"),
-                        "status": outcome.get("message", ""),
+                        "status": msg,
+                        "errorDetail": None if outcome.get("ok") else msg,
                         "progress": 100 if outcome.get("ok") else 0,
                     }
                 )
