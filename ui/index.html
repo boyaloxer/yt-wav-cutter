@@ -8,14 +8,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;700&family=Michroma&family=Silkscreen:wght@400;700&family=Saira+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="native-chrome">
   <div class="desktop">
     <div class="window">
-      <div class="titlebar">
+      <div class="titlebar pywebview-drag-region">
         <div class="traffic">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
+          <button type="button" class="dot red" id="btn-close" title="Close" aria-label="Close"></button>
+          <button type="button" class="dot yellow" id="btn-min" title="Minimize" aria-label="Minimize"></button>
+          <button type="button" class="dot green" id="btn-max" title="Fullscreen" aria-label="Fullscreen"></button>
         </div>
         <div class="title">YT Media Downloader</div>
         <div class="title-spacer"></div>

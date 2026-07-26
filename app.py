@@ -221,29 +221,58 @@ class Api:
         threading.Thread(target=worker, daemon=True).start()
         return {"ok": True, "started": True}
 
+    def window_close(self) -> None:
+        if self._window:
+            self._window.destroy()
+
+    def window_minimize(self) -> None:
+        if self._window:
+            self._window.minimize()
+
+    def window_toggle_fullscreen(self) -> dict:
+        """Green traffic light — toggle fullscreen."""
+        if not self._window:
+            return {"fullscreen": False}
+        self._window.toggle_fullscreen()
+        self._fullscreen = not getattr(self, "_fullscreen", False)
+        return {"fullscreen": self._fullscreen}
+
 
 def main() -> int:
     if not (ROOT / "ui" / "index.html").is_file():
         raise SystemExit(f"UI not found at {ROOT / 'ui' / 'index.html'}")
 
     api = Api()
+    # Frameless: our Aqua Gel titlebar IS the window chrome (no OS window-in-window)
     window_kwargs = dict(
         title=APP_TITLE,
         url=UI_PAGE,
         js_api=api,
-        width=540,
-        height=640,
-        background_color="#DFE9EF",
+        width=520,
+        height=620,
+        background_color="#CFE1EF",
         resizable=False,
+        frameless=True,
+        easy_drag=False,  # only .pywebview-drag-region (titlebar) moves the window
+        shadow=True,
     )
-    # icon= supported on some backends / versions
-    if ICON_PATH.is_file():
+    def _create(**extra):
         try:
-            window = webview.create_window(**window_kwargs, icon=str(ICON_PATH))
+            return webview.create_window(**window_kwargs, **extra)
         except TypeError:
-            window = webview.create_window(**window_kwargs)
-    else:
+            # Older pywebview may not support icon=/shadow=
+            return None
+
+    window = None
+    if ICON_PATH.is_file():
+        window = _create(icon=str(ICON_PATH))
+    if window is None:
+        window = _create()
+    if window is None:
+        # Last resort: drop optional frameless extras that might still fail
+        window_kwargs.pop("shadow", None)
         window = webview.create_window(**window_kwargs)
+
     api.set_window(window)
     webview.start(debug=False)
     return 0

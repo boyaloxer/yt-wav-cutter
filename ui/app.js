@@ -253,8 +253,42 @@
     }
   });
 
+  // Traffic-light window controls (frameless shell)
+  function wireWindowControls() {
+    const stopDrag = (el) => {
+      if (!el) return;
+      el.addEventListener("mousedown", (e) => e.stopPropagation());
+    };
+    ["btn-close", "btn-min", "btn-max"].forEach((id) => stopDrag($(id)));
+
+    $("btn-close").addEventListener("click", async () => {
+      try {
+        const api = await apiReady();
+        await api.window_close();
+      } catch (_) {
+        window.close();
+      }
+    });
+    $("btn-min").addEventListener("click", async () => {
+      try {
+        const api = await apiReady();
+        await api.window_minimize();
+      } catch (_) {}
+    });
+    $("btn-max").addEventListener("click", async () => {
+      try {
+        const api = await apiReady();
+        const res = await api.window_toggle_fullscreen();
+        const on = !!(res && res.fullscreen);
+        $("btn-max").title = on ? "Exit fullscreen" : "Fullscreen";
+        $("btn-max").setAttribute("aria-label", on ? "Exit fullscreen" : "Fullscreen");
+      } catch (_) {}
+    });
+  }
+
   setCutOn(false);
   updateDuration();
+  wireWindowControls();
   window.addEventListener("pywebviewready", loadDeps);
   loadDeps();
 })();

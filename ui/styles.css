@@ -1,27 +1,37 @@
 * { box-sizing: border-box; }
 
-body {
+html, body {
   margin: 0;
-  background: #dfe9ef;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: #cfe1ef;
   font-family: "Saira Semi Condensed", sans-serif;
   user-select: none;
 }
 
+/* Frameless native window: gel UI fills the OS window (no card-in-a-frame) */
 .desktop {
-  min-height: 100vh;
+  min-height: 100%;
+  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   padding: 0;
 }
 
 .window {
-  width: 520px;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(180deg, #eaf3fa, #cfe1ef);
-  border-radius: 18px;
-  border: 1px solid #a8c6dd;
-  box-shadow: 0 10px 34px rgba(60, 110, 160, 0.3), inset 0 1px 0 #fff;
+  border-radius: 0;
+  border: none;
+  box-shadow: inset 0 1px 0 #fff;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .titlebar {
@@ -31,13 +41,32 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
+  cursor: default;
 }
 
-.traffic { display: flex; gap: 6px; width: 55px; }
-.dot { width: 13px; height: 13px; border-radius: 50%; box-shadow: inset 0 -1px 2px rgba(0,0,0,0.2); }
+.traffic {
+  display: flex;
+  gap: 6px;
+  width: 55px;
+  /* clicks on traffic lights must not start a window drag */
+  -webkit-app-region: no-drag;
+}
+.dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  box-shadow: inset 0 -1px 2px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+.dot:disabled { cursor: default; opacity: 0.85; }
 .dot.red { background: radial-gradient(circle at 35% 30%, #fff, #ff9a9a 40%, #d05555); }
 .dot.yellow { background: radial-gradient(circle at 35% 30%, #fff, #ffe09a 40%, #d0a445); }
 .dot.green { background: radial-gradient(circle at 35% 30%, #fff, #9ad0a4 40%, #4ba05c); }
+.dot:hover { filter: brightness(1.08); }
+.dot:active { filter: brightness(0.95); }
 
 .title {
   flex: 1;
@@ -56,6 +85,8 @@ body {
   flex-direction: column;
   gap: 16px;
   position: relative;
+  flex: 1;
+  overflow: auto;
 }
 
 .bubble {
