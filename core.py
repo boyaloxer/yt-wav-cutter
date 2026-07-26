@@ -7,13 +7,40 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
+import tempfile
 import traceback
 from collections.abc import Callable
 from shutil import which
 
 from yt_dlp import YoutubeDL
 
-WORKDIR = os.path.dirname(os.path.abspath(__file__))
+
+def _app_dir() -> str:
+    """Folder containing the .exe (frozen) or this file (dev)."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _ensure_bundled_ffmpeg_on_path() -> None:
+    """Prefer ffmpeg.exe shipped next to the app (installer / portable)."""
+    bundled = os.path.join(_app_dir(), "ffmpeg.exe")
+    if os.path.isfile(bundled):
+        folder = _app_dir()
+        path = os.environ.get("PATH", "")
+        if folder.lower() not in path.lower():
+            os.environ["PATH"] = folder + os.pathsep + path
+
+
+_ensure_bundled_ffmpeg_on_path()
+
+# Writable work dir (Program Files installs are read-only)
+WORKDIR = os.path.join(
+    os.environ.get("LOCALAPPDATA") or tempfile.gettempdir(),
+    "YTMediaDownloader",
+)
+os.makedirs(WORKDIR, exist_ok=True)
 
 ProgressCb = Callable[[float, str | None], None]  # percent, speed label
 StatusCb = Callable[[str], None]

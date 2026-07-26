@@ -118,6 +118,18 @@ Must be `HH:MM:SS`, and end must be after start.
 
 ---
 
+## Windows installer (friendly .exe)
+
+For users who shouldn’t need Python:
+
+See **[`PACKAGING.md`](PACKAGING.md)** — build a Setup.exe / portable zip with desktop shortcut.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build\build_windows.ps1
+# optional, no Inno Setup required:
+powershell -ExecutionPolicy Bypass -File installer\Install-User.ps1
+```
+
 ## Keep it working
 
 YouTube breaks extractors regularly. When downloads fail:
@@ -126,4 +138,4 @@ YouTube breaks extractors regularly. When downloads fail:
 py -3 -m pip install -U yt-dlp
 ```
 
-Then relaunch the app.
+Then relaunch the app. (Packaged `.exe` users need a new release when yt-dlp inside the build goes stale.)

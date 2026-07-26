@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -14,8 +15,26 @@ import webview
 import core
 
 APP_TITLE = "YT Media Downloader"
-ROOT = Path(__file__).resolve().parent
+
+
+def _resource_root() -> Path:
+    """Where ui/ and assets/ live (PyInstaller _MEIPASS when frozen)."""
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+    return Path(__file__).resolve().parent
+
+
+def _app_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+ROOT = _resource_root()
 UI_PAGE = (ROOT / "ui" / "index.html").as_uri()
+ICON_PATH = ROOT / "assets" / "yt-wav-cutter.ico"
+if not ICON_PATH.is_file():
+    ICON_PATH = _app_dir() / "assets" / "yt-wav-cutter.ico"
 
 
 class Api:
@@ -204,16 +223,27 @@ class Api:
 
 
 def main() -> int:
+    if not (ROOT / "ui" / "index.html").is_file():
+        raise SystemExit(f"UI not found at {ROOT / 'ui' / 'index.html'}")
+
     api = Api()
-    window = webview.create_window(
-        APP_TITLE,
-        UI_PAGE,
+    window_kwargs = dict(
+        title=APP_TITLE,
+        url=UI_PAGE,
         js_api=api,
         width=540,
         height=640,
         background_color="#DFE9EF",
         resizable=False,
     )
+    # icon= supported on some backends / versions
+    if ICON_PATH.is_file():
+        try:
+            window = webview.create_window(**window_kwargs, icon=str(ICON_PATH))
+        except TypeError:
+            window = webview.create_window(**window_kwargs)
+    else:
+        window = webview.create_window(**window_kwargs)
     api.set_window(window)
     webview.start(debug=False)
     return 0
