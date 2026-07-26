@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YT Media Downloader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;500;700&family=Michroma&family=Silkscreen:wght@400;700&family=Saira+Semi+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="desktop">
+    <div class="window">
+      <div class="titlebar">
+        <div class="traffic">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+        </div>
+        <div class="title">YT Media Downloader</div>
+        <div class="title-spacer"></div>
+      </div>
+
+      <div class="content">
+        <div class="bubble big"></div>
+        <div class="bubble small"></div>
+
+        <div class="wordmark">
+          <div class="wm">media<span>downloader</span></div>
+          <div class="tag">V2.0 — NOW WITH 100% MORE LIQUID</div>
+        </div>
+
+        <div class="field-block">
+          <label class="label">PASTE URL</label>
+          <div class="url-row">
+            <input id="url" type="text" placeholder="https://www.youtube.com/watch?v=…" spellcheck="false">
+            <button type="button" id="btn-paste" class="btn-paste">paste</button>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <div class="seg" id="mode-seg">
+            <button type="button" class="seg-btn active" data-mode="audio">♪ audio → wav</button>
+            <button type="button" class="seg-btn" data-mode="video">video → mp4</button>
+          </div>
+          <button type="button" class="cut-switch" id="cut-switch" aria-pressed="true">
+            <span class="track"><span class="knob"></span></span>
+            <span class="cut-label">cut a segment</span>
+          </button>
+        </div>
+
+        <div class="cut-panel" id="cut-panel">
+          <div class="time-col">
+            <label class="label tiny">START</label>
+            <input id="start" class="time" value="00:00:00" spellcheck="false">
+          </div>
+          <div class="arrow">→</div>
+          <div class="time-col">
+            <label class="label tiny">END</label>
+            <input id="end" class="time" value="00:00:20" spellcheck="false">
+          </div>
+          <div class="duration" id="duration">= 20 SEC</div>
+        </div>
+
+        <button type="button" class="btn-go" id="btn-go">⬇ download it</button>
+
+        <div class="progress-block">
+          <div class="progress-track">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+          <div class="status-row">
+            <span id="status-left">READY 2 RIP</span>
+            <span id="status-right">IDLE</span>
+          </div>
+        </div>
+
+        <div class="chips" id="chips">
+          <span class="chip" id="chip-ffmpeg">FFMPEG …</span>
+          <span class="chip" id="chip-node">NODE …</span>
+          <span class="chip info" id="chip-ytdlp">YT-DLP …</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

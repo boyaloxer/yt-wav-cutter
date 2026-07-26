@@ -1,12 +1,8 @@
 # yt-wav-cutter
 
-Simple Windows-friendly GUI to:
+Download YouTube **audio → WAV** or **video → MP4**, optionally cut a time range.
 
-- download YouTube **audio → WAV**
-- download YouTube **video → MP4**
-- optionally **cut a time range** (start / end)
-
-Win95-ish gray UI on purpose.
+**V2 UI:** Aqua Gel / Y2K liquid look (HTML + **pywebview**), wired to the same yt-dlp / ffmpeg backend.
 
 ## Quick start (Windows)
 
@@ -16,54 +12,43 @@ py -3 -m pip install -U -r requirements.txt
 py -3 yt-wav-cutter.py
 ```
 
-Or:
+Legacy Win95 tkinter UI:
 
 ```powershell
-python -m pip install -U -r requirements.txt
-python yt-wav-cutter.py
+py -3 yt-wav-cutter.py --classic
 ```
 
 ## Requirements
 
 | Dependency | Why |
 |---|---|
-| **Python 3.10+** with **tkinter** | GUI |
-| **yt-dlp** (`requirements.txt`) | YouTube download |
+| **Python 3.10+** | App runtime |
+| **yt-dlp** | YouTube download |
+| **pywebview** | Aqua Gel window (Edge WebView2 on Windows) |
 | **ffmpeg** on `PATH` | WAV extract + cutting |
 | **Node.js** (recommended) | YouTube JS runtime for yt-dlp |
 
-Without Node (or Deno), yt-dlp still often works today but prints a deprecation warning and may miss formats later. See [yt-dlp EJS wiki](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
+See [`DEPENDENCIES.md`](DEPENDENCIES.md).
 
-More detail: [`DEPENDENCIES.md`](DEPENDENCIES.md)
+## Usage (V2)
 
-## Usage
+1. Paste a YouTube URL (or hit **paste**)
+2. Pick **audio → wav** or **video → mp4**
+3. Toggle **cut a segment** if you want a range
+4. Hit **⬇ download it** and choose a save path
 
-1. Paste a YouTube URL  
-2. Set start / end times (`HH:MM:SS`) if cutting  
-3. Pick a button:
-   - **Download and Cut Audio**
-   - **Download and Cut Video**
-   - **Download Audio Full**
-   - **Download Video Full**
-4. Choose where to save
+## Project layout
 
-The status line and progress bar show what’s happening. Errors show in the status line (details also print in the console if you launched from a terminal).
+| File | Role |
+|---|---|
+| `yt-wav-cutter.py` | Entrypoint |
+| `app.py` | pywebview shell + JS bridge |
+| `core.py` | yt-dlp / ffmpeg jobs |
+| `ui/` | Aqua Gel HTML / CSS / JS |
+| `classic_ui.py` | Optional old tkinter UI |
 
 ## Keep it working
-
-YouTube breaks extractors often. When downloads fail:
 
 ```powershell
 py -3 -m pip install -U yt-dlp
 ```
-
-Re-run the app after upgrading.
-
-## Packaging as .exe (optional)
-
-```powershell
-py -3 -m pip install pyinstaller
-pyinstaller --onefile --windowed yt-wav-cutter.py
-```
-
-The built exe still needs **ffmpeg** (and ideally **Node**) available on the machine `PATH`.
